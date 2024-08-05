@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "ytdl": {
-      "commandName": "Project",
-      "commandLineArgs": "-o \"D:\\video\" https://www.youtube.com/@BringusStudios"
-    }
-  }
-}

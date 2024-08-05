@@ -1,6 +1,6 @@
 # ytdl - A YouTube video downloader.
 
 ## Requirements
-This project requires (ffmpeg)[#] to be available from your system's PATH.
+This project requires [ffmpeg](https://www.ffmpeg.org/) to be available from your system's PATH.
 ## Building
-Install the (.NET 8.0 SDK)[#] and run `dotnet build -c Release`.
+Install the [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) and run `dotnet build -c Release`.

@@ -1,5 +1,6 @@
 ﻿namespace ytdl;
 
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
@@ -17,8 +18,8 @@ class Program
 	static List<string> URLs = new();
 	static bool AudioOnly = false;
 	static bool GetCaptions = false;
+	static bool NoDASH = false;
 	static YoutubeClient? Client;
-	static string CurrentVideo = "";
 	static CancellationTokenSource Source = new();
 	static CancellationToken Token = Source.Token;
 	static async Task<int> Main(string[] args)
@@ -32,18 +33,46 @@ class Program
 			Console.WriteLine($"Downloading {url}");
 			if (url.Contains("/watch?"))
 			{
-				Video video = await Client.Videos.GetAsync(args[0]);
-				var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
-				if (AudioOnly)
+				try
 				{
-					var audiosstream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-					await DownloadAudio(audiosstream, video.Title);
+					Video video = await Client.Videos.GetAsync(url);
+					var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
+					if (AudioOnly)
+					{
+						var audiosstream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+						await DownloadAudio(audiosstream, video.Title);
+						continue;
+					}
+					if (GetCaptions)
+					{
+						var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
+						var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
+						Console.Write($"Captions for {video.Title} - ");
+						CurrentRow = Console.GetCursorPosition().Top;
+						CurrentCollumn = Console.GetCursorPosition().Left;
+						await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+						new Progress<double>(percent =>
+						{
+							int CurrentPercent = (int)(percent * 100);
+							if (CurrentPercent != LastPercent)
+							{
+								LastPercent = CurrentPercent;
+								Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+								Console.Write($"{CurrentPercent}%");
+							}
+						}), Token);
+						Console.WriteLine();
+					}
+					var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+					var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
+					await DownloadVideo([audiostream, videostream], video.Title, videostream.Container.Name);
 					continue;
 				}
-				var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-				var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
-				await DownloadVideo([audiostream, videostream], video.Title, videostream.Container.Name);
-				continue;
+				catch (Exception e)
+				{
+					Console.WriteLine($"An exception occured trying to download {url}: {e.GetType()} {e.Message}");
+				}
+
 			}
 			else if (url.Contains("playlist"))
 			{
@@ -54,12 +83,31 @@ class Program
 					try
 					{
 						var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
-						CurrentVideo = video.Title;
 						if (AudioOnly)
 						{
 							var audiosstream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 							await DownloadAudio(audiosstream, video.Title);
 							continue;
+						}
+						if (GetCaptions)
+						{
+							var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
+							var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
+							Console.Write($"Captions for {video.Title} - ");
+                            CurrentRow = Console.GetCursorPosition().Top;
+                            CurrentCollumn = Console.GetCursorPosition().Left;
+                            await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+							new Progress<double>(percent =>
+							{
+								int CurrentPercent = (int)(percent * 100);
+								if (CurrentPercent != LastPercent)
+								{
+									LastPercent = CurrentPercent;
+									Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+									Console.Write($"{CurrentPercent}%");
+								}
+							}), Token);
+							Console.WriteLine();
 						}
 						var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 						var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
@@ -81,7 +129,6 @@ class Program
 					try
 					{
 						var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
-						CurrentVideo = video.Title;
 						if (AudioOnly)
 						{
 							var audiosstream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
@@ -90,20 +137,31 @@ class Program
 						}
 						var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 						var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
-						IStreamInfo[] streams = [audiostream, videostream];
 						if (GetCaptions)
 						{
 							var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
 							var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
-							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{video.Title}.srt");
+							Console.Write($"Captions for {video.Title} - ");
+                            CurrentRow = Console.GetCursorPosition().Top;
+                            CurrentCollumn = Console.GetCursorPosition().Left;
+                            await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+							new Progress<double>(percent =>
+							{
+								int CurrentPercent = (int)(percent * 100);
+								if (CurrentPercent != LastPercent)
+								{
+									LastPercent = CurrentPercent;
+									Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+									Console.Write($"{CurrentPercent}%");
+								}
+							}), Token);
+							Console.WriteLine();
 						}
-						await DownloadVideo(streams, video.Title, videostream.Container.Name);
-						CurrentVideo = "";
+						await DownloadVideo([audiostream, videostream], video.Title, videostream.Container.Name);
 					}
 					catch (Exception e)
 					{
 						Console.WriteLine($"An exception occured trying to download video \"{video.Title}\": {e.Message}");
-						CurrentVideo = "";
 						continue;
 					}
 				}
@@ -145,6 +203,12 @@ class Program
 			Console.WriteLine($"An HTTP error occured: {e.Message}");
 			Console.WriteLine("403 errors usually happen on age restricted videos.");
 			return;
+		}
+		catch (Win32Exception)
+		{
+			Console.WriteLine("Downloading DASH streams requires having ffmpeg installed and available from your system's PATH.");
+			Console.WriteLine("Download it here: https://www.ffmpeg.org/");
+			Exit(1);
 		}
 		catch (TaskCanceledException)
 		{
@@ -194,13 +258,19 @@ class Program
 			Console.WriteLine("403 errors usually happen on age restricted videos.");
 			return;
 		}
+		catch (Win32Exception)
+		{
+			Console.WriteLine("Downloading DASH streams requires having ffmpeg installed and available from your system's PATH.");
+			Console.WriteLine("Download it here: https://www.ffmpeg.org/");
+			Exit(1);
+		}
 		catch (TaskCanceledException)
 		{
 			return;
 		}
 		catch (Exception e)
 		{
-			Console.WriteLine($"An exception occured: {e.GetType()}");
+			Console.WriteLine($"An exception occured: {e.GetType()} {e.Message}");
 #if DEBUG
 			Console.WriteLine(e.StackTrace);
 #endif
@@ -218,6 +288,8 @@ class Program
 			{ "o|outpath=", "A path to download videos and their streams to.", o => outpath = o },
 			{ "a|audio-only", "Download only the audio streams from the given URLs", a => AudioOnly = a != null },
 			{ "cc|closed-captions", "Download Closed-Captions if they're available.", cc => GetCaptions = cc != null },
+			{ "D|no-dash", "Don't download DASH streams. This skips the requirement of ffmpeg, but limits video quality to " +
+			"only 720p.", nd => NoDASH = nd != null },
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }

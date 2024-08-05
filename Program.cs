@@ -61,7 +61,27 @@ class Program
 								Console.Write($"{CurrentPercent}%");
 							}
 						}), Token);
-						Console.WriteLine();
+						Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+						Console.WriteLine("Completed.");
+					}
+					if (NoDASH)
+					{
+						var stream = manifest.GetMuxedStreams().GetWithHighestVideoQuality();
+						Console.Write($"{video.Title} - ");
+						CurrentRow = Console.GetCursorPosition().Top;
+						CurrentCollumn = Console.GetCursorPosition().Left;
+						await Client.Videos.Streams.DownloadAsync(stream, $"{RemoveInvalidChars(video.Title)}.{stream.Container.Name}",
+						new Progress<double>(percent =>
+						{
+							int CurrentPercent = (int)(percent * 100);
+							if (CurrentPercent != LastPercent)
+							{
+								LastPercent = CurrentPercent;
+								Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+								Console.Write($"{CurrentPercent}%");
+							}
+						}), Token);
+						continue;
 					}
 					var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 					var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
@@ -94,9 +114,9 @@ class Program
 							var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
 							var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
 							Console.Write($"Captions for {video.Title} - ");
-                            CurrentRow = Console.GetCursorPosition().Top;
-                            CurrentCollumn = Console.GetCursorPosition().Left;
-                            await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+							CurrentRow = Console.GetCursorPosition().Top;
+							CurrentCollumn = Console.GetCursorPosition().Left;
+							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
 							new Progress<double>(percent =>
 							{
 								int CurrentPercent = (int)(percent * 100);
@@ -107,7 +127,27 @@ class Program
 									Console.Write($"{CurrentPercent}%");
 								}
 							}), Token);
-							Console.WriteLine();
+							Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+							Console.WriteLine("Completed.");
+						}
+						if (NoDASH)
+						{
+							var stream = manifest.GetMuxedStreams().GetWithHighestVideoQuality();
+							Console.Write($"{video.Title} - ");
+							CurrentRow = Console.GetCursorPosition().Top;
+							CurrentCollumn = Console.GetCursorPosition().Left;
+							await Client.Videos.Streams.DownloadAsync(stream, $"{RemoveInvalidChars(video.Title)}.{stream.Container.Name}",
+							new Progress<double>(percent =>
+							{
+								int CurrentPercent = (int)(percent * 100);
+								if (CurrentPercent != LastPercent)
+								{
+									LastPercent = CurrentPercent;
+									Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+									Console.Write($"{CurrentPercent}%");
+								}
+							}), Token);
+							continue;
 						}
 						var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 						var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
@@ -135,16 +175,14 @@ class Program
 							await DownloadAudio(audiosstream, video.Title);
 							continue;
 						}
-						var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-						var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
 						if (GetCaptions)
 						{
 							var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
 							var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
 							Console.Write($"Captions for {video.Title} - ");
-                            CurrentRow = Console.GetCursorPosition().Top;
-                            CurrentCollumn = Console.GetCursorPosition().Left;
-                            await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+							CurrentRow = Console.GetCursorPosition().Top;
+							CurrentCollumn = Console.GetCursorPosition().Left;
+							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
 							new Progress<double>(percent =>
 							{
 								int CurrentPercent = (int)(percent * 100);
@@ -155,8 +193,30 @@ class Program
 									Console.Write($"{CurrentPercent}%");
 								}
 							}), Token);
-							Console.WriteLine();
+							Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+							Console.WriteLine("Completed.");
 						}
+						if (NoDASH)
+						{
+							var stream = manifest.GetMuxedStreams().GetWithHighestVideoQuality();
+							Console.Write($"{video.Title} - ");
+							CurrentRow = Console.GetCursorPosition().Top;
+							CurrentCollumn = Console.GetCursorPosition().Left;
+							await Client.Videos.Streams.DownloadAsync(stream, $"{RemoveInvalidChars(video.Title)}.{stream.Container.Name}",
+							new Progress<double>(percent =>
+							{
+								int CurrentPercent = (int)(percent * 100);
+								if (CurrentPercent != LastPercent)
+								{
+									LastPercent = CurrentPercent;
+									Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+									Console.Write($"{CurrentPercent}%");
+								}
+							}), Token);
+							continue;
+						}
+						var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+						var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
 						await DownloadVideo([audiostream, videostream], video.Title, videostream.Container.Name);
 					}
 					catch (Exception e)

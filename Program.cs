@@ -228,7 +228,7 @@ class Program
 			}
 
 		}
-		Console.WriteLine($"Done in {sw.Elapsed}.");
+		Console.WriteLine($"Done in {FormatTimespan(sw.Elapsed)}.");
 		return 0;
 	}
 
@@ -237,8 +237,8 @@ class Program
 		if (Client is null)
 			return;
 		Console.Write($"{title} - ");
-		CurrentRow = Console.GetCursorPosition().Left;
-		CurrentCollumn = title.Length + 3;
+		CurrentRow = Console.GetCursorPosition().Top;
+		CurrentCollumn = Console.GetCursorPosition().Left;
 		try
 		{
 		await Client.Videos.Streams.DownloadAsync(stream, $"{RemoveInvalidChars(title)}.{stream.Container.Name}",
@@ -292,7 +292,7 @@ class Program
 			return;
 		Console.Write($"{title} - ");
 		CurrentRow = Console.GetCursorPosition().Top;
-		CurrentCollumn = title.Length + 3;
+		CurrentCollumn = Console.GetCursorPosition().Left;
 		try
 		{
 		await Client.Videos.DownloadAsync(streams, new ConversionRequestBuilder($"{RemoveInvalidChars(title)}.{container}").Build(),
@@ -349,7 +349,7 @@ class Program
 			{ "a|audio-only", "Download only the audio streams from the given URLs", a => AudioOnly = a != null },
 			{ "cc|closed-captions", "Download Closed-Captions if they're available.", cc => GetCaptions = cc != null },
 			{ "D|no-dash", "Don't download DASH streams. This skips the requirement of ffmpeg, but limits video quality to " +
-			"only 720p.", nd => NoDASH = nd != null },
+			"below 720p.", nd => NoDASH = nd != null },
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }
@@ -412,13 +412,25 @@ class Program
 		Environment.Exit(code);
 	}
 
+	static string FormatTimespan(TimeSpan span)
+	{
+		string outstr = "";
+		if (span.Hours == 0)
+		{
+			outstr = span.ToString("mm\\:ss\\.ff");
+			return outstr;
+		}
+		outstr = span.ToString("hh\\:mm\\:ss\\.ff");
+		return outstr;
+	}
+
 	static string RemoveInvalidChars(string filepath)
 	{
 		char[] invalid = Path.GetInvalidFileNameChars();
 		string outpath = "";
 		foreach (char c in filepath)
 		{
-			if (invalid.Contains(c))
+			if (invalid.Contains(c) || (c == '&' && !NoDASH))
 				continue;
 			outpath += c;
 		}

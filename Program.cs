@@ -18,6 +18,7 @@ class Program
 	static List<string> URLs = new();
 	static bool AudioOnly = false;
 	static bool GetCaptions = false;
+	static string CaptionLang = "EN";
 	static bool NoDASH = false;
 	static YoutubeClient? Client;
 	static CancellationTokenSource Source = new();
@@ -46,11 +47,11 @@ class Program
 					if (GetCaptions)
 					{
 						var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
-						var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
-						Console.Write($"Captions for {video.Title} - ");
+						var lang = captions.GetByLanguage(CaptionLang);
+						Console.Write($"Captions for {video.Title} ({CaptionLang})- ");
 						CurrentRow = Console.GetCursorPosition().Top;
 						CurrentCollumn = Console.GetCursorPosition().Left;
-						await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+						await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}-{CaptionLang}.srt",
 						new Progress<double>(percent =>
 						{
 							int CurrentPercent = (int)(percent * 100);
@@ -92,7 +93,6 @@ class Program
 				{
 					Console.WriteLine($"An exception occured trying to download {url}: {e.GetType()} {e.Message}");
 				}
-
 			}
 			else if (url.Contains("playlist"))
 			{
@@ -112,11 +112,11 @@ class Program
 						if (GetCaptions)
 						{
 							var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
-							var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
-							Console.Write($"Captions for {video.Title} - ");
+							var lang = captions.GetByLanguage(CaptionLang);
+							Console.Write($"Captions for {video.Title} ({CaptionLang})- ");
 							CurrentRow = Console.GetCursorPosition().Top;
 							CurrentCollumn = Console.GetCursorPosition().Left;
-							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}-{CaptionLang}.srt",
 							new Progress<double>(percent =>
 							{
 								int CurrentPercent = (int)(percent * 100);
@@ -178,11 +178,11 @@ class Program
 						if (GetCaptions)
 						{
 							var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
-							var lang = captions.GetByLanguage("EN"); // TODO: Add getting other languages
-							Console.Write($"Captions for {video.Title} - ");
+							var lang = captions.GetByLanguage(CaptionLang);
+							Console.Write($"Captions for {video.Title} ({CaptionLang})- ");
 							CurrentRow = Console.GetCursorPosition().Top;
 							CurrentCollumn = Console.GetCursorPosition().Left;
-							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}.srt",
+							await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(video.Title)}-{CaptionLang}.srt",
 							new Progress<double>(percent =>
 							{
 								int CurrentPercent = (int)(percent * 100);
@@ -226,8 +226,8 @@ class Program
 					}
 				}
 			}
-
 		}
+
 		Console.WriteLine($"Done in {FormatTimespan(sw.Elapsed)}.");
 		return 0;
 	}
@@ -347,9 +347,12 @@ class Program
 		OptionSet options = new OptionSet {
 			{ "o|outpath=", "A path to download videos and their streams to.", o => outpath = o },
 			{ "a|audio-only", "Download only the audio streams from the given URLs", a => AudioOnly = a != null },
-			{ "cc|closed-captions", "Download Closed-Captions if they're available.", cc => GetCaptions = cc != null },
+			{ "cc|closed-captions", "Download Closed-Captions if they're available. Uses English by default",
+			cc => GetCaptions = cc != null },
 			{ "D|no-dash", "Don't download DASH streams. This skips the requirement of ffmpeg, but limits video quality to " +
 			"below 720p.", nd => NoDASH = nd != null },
+			{ "cl|caption-lang=", "Caption language to download, if it's available. Must be the 2 letter ISO 3166 language code.",
+			cl => CaptionLang = cl },
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }

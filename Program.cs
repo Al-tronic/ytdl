@@ -92,17 +92,7 @@ class Program
 				Console.Write($"Captions for {videoTitle} ({CaptionLang})- ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
-				await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt",
-				new Progress<double>(percent =>
-				{
-					int CurrentPercent = (int)(percent * 100);
-					if (CurrentPercent != LastPercent)
-					{
-						LastPercent = CurrentPercent;
-						Console.SetCursorPosition(CurrentCollumn, CurrentRow);
-						Console.Write($"{CurrentPercent}%");
-					}
-				}), Token);
+				await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt", default, Token);
 				Console.SetCursorPosition(CurrentCollumn, CurrentRow);
 				Console.WriteLine("Completed.");
 			}

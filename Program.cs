@@ -20,12 +20,15 @@ class Program
 	static bool GetCaptions = false;
 	static string CaptionLang = "EN";
 	static bool NoDASH = false;
+	static bool PlaylistFolder = false;
+	static string OutputDir = "";
 	static YoutubeClient? Client;
-	static CancellationTokenSource Source = new();
-	static CancellationToken Token = Source.Token;
+	static readonly CancellationTokenSource Source = new();
+	static readonly CancellationToken Token = Source.Token;
 	static async Task<int> Main(string[] args)
 	{
 		ParseCommandOptions(args);
+		OutputDir = Directory.GetCurrentDirectory();
 		Client = new();
 		Console.CancelKeyPress += new(CleanupDuringCancel);
 		Stopwatch sw = Stopwatch.StartNew();
@@ -43,11 +46,17 @@ class Program
 			{
 				Playlist playlist = await Client.Playlists.GetAsync(url);
 				Console.WriteLine($"Downloading playlist \"{playlist.Title}\"");
+				if (PlaylistFolder)
+				{
+					Directory.CreateDirectory(RemoveInvalidPathChars(playlist.Title));
+					Directory.SetCurrentDirectory(RemoveInvalidPathChars(playlist.Title));
+				}
 				await foreach (PlaylistVideo video in Client.Playlists.GetVideosAsync(url))
 				{
 					var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 					await DownloadFunc(manifest, video.Title, video.Url);
 				}
+				if (PlaylistFolder) Directory.SetCurrentDirectory(OutputDir);
 			}
 			else if (url.Contains("/@") || url.Contains("/c/") || url.Contains("/channel/"))
 			{
@@ -89,7 +98,7 @@ class Program
 			{
 				var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
 				var lang = captions.GetByLanguage(CaptionLang);
-				Console.Write($"Captions for {videoTitle} ({CaptionLang})- ");
+				Console.Write($"Captions for {videoTitle} ({CaptionLang}) - ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
 				await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt", default, Token);
@@ -247,6 +256,7 @@ class Program
 			"below 720p.", nd => NoDASH = nd != null },
 			{ "cl|caption-lang=", "Caption language to download, if it's available. Must be the 2 letter ISO 3166 language code.",
 			cl => CaptionLang = cl },
+			{ "pf|playlist-folder", "Download playlists to a folder with the name of the playlist.", pf =>  PlaylistFolder = pf != null },
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }
@@ -328,6 +338,19 @@ class Program
 		foreach (char c in filepath)
 		{
 			if (invalid.Contains(c) || (c == '&' && !NoDASH))
+				continue;
+			outpath += c;
+		}
+		return outpath;
+	}
+
+	static string RemoveInvalidPathChars(string path)
+	{
+		char[] invalid = Path.GetInvalidPathChars();
+		string outpath = "";
+		foreach (char c in path)
+		{
+			if (invalid.Contains(c))
 				continue;
 			outpath += c;
 		}

@@ -21,6 +21,7 @@ class Program
 	static string CaptionLang = "EN";
 	static bool NoDASH = false;
 	static bool PlaylistFolder = false;
+	static bool ChannelFolder = false;
 	static string OutputDir = "";
 	static YoutubeClient? Client;
 	static readonly CancellationTokenSource Source = new();
@@ -62,6 +63,11 @@ class Program
 			{
 				var channel = await Client.Channels.GetByHandleAsync(url);
 				Console.WriteLine($"Downloading all uploads from channel \"{channel.Title}\"");
+				if (ChannelFolder)
+				{
+					Directory.CreateDirectory(RemoveInvalidPathChars(channel.Title));
+					Directory.SetCurrentDirectory(RemoveInvalidPathChars(channel.Title));
+				}
 				await foreach (PlaylistVideo video in Client.Channels.GetUploadsAsync(channel.Id))
 				{
 					try
@@ -75,6 +81,7 @@ class Program
 						continue;
 					}
 				}
+				if (ChannelFolder) Directory.SetCurrentDirectory(OutputDir);
 			}
 		}
 
@@ -98,7 +105,7 @@ class Program
 			{
 				var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
 				var lang = captions.GetByLanguage(CaptionLang);
-				Console.Write($"Captions for {videoTitle} ({CaptionLang}) - ");
+				Console.Write($"Captions for {videoTitle} ({CaptionLang})");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
 				await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt", default, Token);
@@ -256,7 +263,10 @@ class Program
 			"below 720p.", nd => NoDASH = nd != null },
 			{ "cl|caption-lang=", "Caption language to download, if it's available. Must be the 2 letter ISO 3166 language code.",
 			cl => CaptionLang = cl },
-			{ "pf|playlist-folder", "Download playlists to a folder with the name of the playlist.", pf =>  PlaylistFolder = pf != null },
+			{ "pf|playlist-folders", "Download playlists to a folder with the name of the playlist.", pf =>  PlaylistFolder = pf != null },
+			{ "cf|channel-folders", "Download channels to a folder with the channel's name.", cf => ChannelFolder = cf != null },
+			{ "uf|use-folders", "Download playlists and channels to folders with their names. Equivalent to setting --channel-folders " + 
+			"and --playlist-folders.", uf => { if (uf != null) { ChannelFolder = true; PlaylistFolder = true; } }},
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }

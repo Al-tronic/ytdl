@@ -16,6 +16,7 @@
 *.wav
 *.srt
 *.mp3
+Properties/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

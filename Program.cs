@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using Mono.Options;
 using YoutubeExplode;
+using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
@@ -45,13 +46,10 @@ class Program
 				Video video = await Client.Videos.GetAsync(url);
 				if (SaveThumbnails)
 				{
-					Console.WriteLine($"Downloading all thumbnails for video {video.Title}");
-					foreach (var thumbnail in video.Thumbnails)
-					{
-						Stream stream = await httpClient.GetStreamAsync(thumbnail.Url);
-						FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title) + ".webm");
-						await stream.CopyToAsync(outstream);
-					}
+					Console.WriteLine($"Downloading thumbnail for video {video.Title}");
+					Stream stream = await httpClient.GetStreamAsync(video.Thumbnails.GetWithHighestResolution().Url);
+					FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title) + ".webp");
+					await stream.CopyToAsync(outstream);
 				}
 				var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 				await DownloadFunc(manifest, video.Title, url);
@@ -68,17 +66,14 @@ class Program
 				}
 				await foreach (PlaylistVideo video in Client.Playlists.GetVideosAsync(url))
 				{
-					if (SaveThumbnails)
-					{
-						Console.WriteLine($"Downloading all thumbnails for video {video.Title}");
-						foreach (var thumbnail in video.Thumbnails)
-						{
-							Stream stream = await httpClient.GetStreamAsync(thumbnail.Url);
-							FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title));
-							await stream.CopyToAsync(outstream);
-						}
-					}
-					var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
+                    if (SaveThumbnails)
+                    {
+                        Console.WriteLine($"Downloading thumbnail for video {video.Title}");
+                        Stream stream = await httpClient.GetStreamAsync(video.Thumbnails.GetWithHighestResolution().Url);
+                        FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title) + ".webp");
+                        await stream.CopyToAsync(outstream);
+                    }
+                    var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 					await DownloadFunc(manifest, video.Title, video.Url);
 				}
 				if (PlaylistFolder) Directory.SetCurrentDirectory(OutputDir);
@@ -96,17 +91,14 @@ class Program
 				{
 					try
 					{
-						if (SaveThumbnails)
-						{
-							Console.WriteLine($"Downloading all thumbnails for video {video.Title}");
-							foreach (var thumbnail in video.Thumbnails)
-							{
-								NetworkStream stream = (NetworkStream)await httpClient.GetStreamAsync(thumbnail.Url);
-								FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title));
-								await stream.CopyToAsync(outstream);
-							}
-						}
-						var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
+                        if (SaveThumbnails)
+                        {
+                            Console.WriteLine($"Downloading thumbnail for video {video.Title}");
+                            Stream stream = await httpClient.GetStreamAsync(video.Thumbnails.GetWithHighestResolution().Url);
+                            FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title) + ".webp");
+                            await stream.CopyToAsync(outstream);
+                        }
+                        var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 						await DownloadFunc(manifest, video.Title, video.Url);
 					}
 					catch (Exception e)

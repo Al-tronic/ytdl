@@ -3,6 +3,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using Mono.Options;
 using YoutubeExplode;
@@ -22,8 +23,10 @@ class Program
 	static bool NoDASH = false;
 	static bool PlaylistFolder = false;
 	static bool ChannelFolder = false;
+	static bool SaveThumbnails = false;
 	static string OutputDir = "";
 	static YoutubeClient? Client;
+	static HttpClient? httpClient = null;
 	static readonly CancellationTokenSource Source = new();
 	static readonly CancellationToken Token = Source.Token;
 	static async Task<int> Main(string[] args)
@@ -31,6 +34,7 @@ class Program
 		ParseCommandOptions(args);
 		OutputDir = Directory.GetCurrentDirectory();
 		Client = new();
+		if (SaveThumbnails) httpClient = new();
 		Console.CancelKeyPress += new(CleanupDuringCancel);
 		Stopwatch sw = Stopwatch.StartNew();
 		foreach (string url in URLs)
@@ -39,6 +43,16 @@ class Program
 			if (url.Contains("/watch?"))
 			{
 				Video video = await Client.Videos.GetAsync(url);
+				if (SaveThumbnails)
+				{
+					Console.WriteLine($"Downloading all thumbnails for video {video.Title}");
+					foreach (var thumbnail in video.Thumbnails)
+					{
+						Stream stream = await httpClient.GetStreamAsync(thumbnail.Url);
+						FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title) + ".webm");
+						await stream.CopyToAsync(outstream);
+					}
+				}
 				var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 				await DownloadFunc(manifest, video.Title, url);
 				continue;
@@ -54,6 +68,16 @@ class Program
 				}
 				await foreach (PlaylistVideo video in Client.Playlists.GetVideosAsync(url))
 				{
+					if (SaveThumbnails)
+					{
+						Console.WriteLine($"Downloading all thumbnails for video {video.Title}");
+						foreach (var thumbnail in video.Thumbnails)
+						{
+							Stream stream = await httpClient.GetStreamAsync(thumbnail.Url);
+							FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title));
+							await stream.CopyToAsync(outstream);
+						}
+					}
 					var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 					await DownloadFunc(manifest, video.Title, video.Url);
 				}
@@ -72,6 +96,16 @@ class Program
 				{
 					try
 					{
+						if (SaveThumbnails)
+						{
+							Console.WriteLine($"Downloading all thumbnails for video {video.Title}");
+							foreach (var thumbnail in video.Thumbnails)
+							{
+								NetworkStream stream = (NetworkStream)await httpClient.GetStreamAsync(thumbnail.Url);
+								FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title));
+								await stream.CopyToAsync(outstream);
+							}
+						}
 						var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
 						await DownloadFunc(manifest, video.Title, video.Url);
 					}
@@ -267,6 +301,7 @@ class Program
 			{ "cf|channel-folders", "Download channels to a folder with the channel's name.", cf => ChannelFolder = cf != null },
 			{ "uf|use-folders", "Download playlists and channels to folders with their names. Equivalent to setting --channel-folders " + 
 			"and --playlist-folders.", uf => { if (uf != null) { ChannelFolder = true; PlaylistFolder = true; } }},
+			{ "st|save-thumbnails", "Download the video's thumbnails.", sf => SaveThumbnails = sf != null },
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }

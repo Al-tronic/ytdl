@@ -3,7 +3,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using Mono.Options;
 using YoutubeExplode;
@@ -43,7 +42,9 @@ class Program
 			Console.WriteLine($"Downloading {url}");
 			if (url.Contains("/watch?"))
 			{
-				Video video = await Client.Videos.GetAsync(url);
+				Video video;
+				try { video = await Client.Videos.GetAsync(url); }
+				catch (Exception ex) { Console.WriteLine($"Can't get video. {ex.Message}"); continue; }
 				if (SaveThumbnails)
 				{
 					Console.WriteLine($"Downloading thumbnail for video {video.Title}");
@@ -57,7 +58,9 @@ class Program
 			}
 			else if (url.Contains("playlist"))
 			{
-				Playlist playlist = await Client.Playlists.GetAsync(url);
+				Playlist playlist;
+				try { playlist = await Client.Playlists.GetAsync(url); }
+				catch (Exception ex) { Console.WriteLine($"Can't get playlist. {ex.Message}"); continue; }
 				Console.WriteLine($"Downloading playlist \"{playlist.Title}\"");
 				if (PlaylistFolder)
 				{
@@ -80,7 +83,9 @@ class Program
 			}
 			else if (url.Contains("/@") || url.Contains("/c/") || url.Contains("/channel/"))
 			{
-				var channel = await Client.Channels.GetByHandleAsync(url);
+				YoutubeExplode.Channels.Channel channel;
+				try { channel = await Client.Channels.GetByHandleAsync(url); }
+				catch (Exception ex) { Console.WriteLine($"Can't get channel. {ex.Message}"); continue; }
 				Console.WriteLine($"Downloading all uploads from channel \"{channel.Title}\"");
 				if (ChannelFolder)
 				{

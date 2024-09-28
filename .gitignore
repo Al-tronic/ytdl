@@ -10,6 +10,8 @@
 *.userosscache
 *.sln.docstates
 
+.vscode/
+
 # Testing
 *.mp4
 *.webm

@@ -8,6 +8,7 @@ using Mono.Options;
 using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
+using YoutubeExplode.Exceptions;
 using YoutubeExplode.Playlists;
 using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
@@ -24,6 +25,8 @@ class Program
 	static bool PlaylistFolder = false;
 	static bool ChannelFolder = false;
 	static bool SaveThumbnails = false;
+	static bool DontCombine = false;
+	static bool Redownload = false;
 	static string OutputDir = "";
 	static YoutubeClient? Client;
 	static HttpClient? httpClient = null;
@@ -124,6 +127,7 @@ class Program
 	{
 		ArgumentNullException.ThrowIfNull(manifest);
 		ArgumentNullException.ThrowIfNull(Client);
+
 		try
 		{
 			if (AudioOnly)
@@ -146,10 +150,16 @@ class Program
 			if (NoDASH)
 			{
 				var stream = manifest.GetMuxedStreams().GetWithHighestVideoQuality();
+				string filename = $"{RemoveInvalidChars(videoTitle)}.{stream.Container.Name}";
+				if (Path.Exists(filename) && new FileInfo(filename).Length != 0 && !Redownload)
+				{
+					Console.WriteLine($"Skipping {videoTitle} beacuse it's already downloaded.");
+					return;
+				}
 				Console.Write($"{videoTitle} - ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
-				await Client.Videos.Streams.DownloadAsync(stream, $"{RemoveInvalidChars(videoTitle)}.{stream.Container.Name}",
+				await Client.Videos.Streams.DownloadAsync(stream, filename,
 				new Progress<double>(percent =>
 				{
 					int CurrentPercent = (int)(percent * 100);
@@ -160,6 +170,46 @@ class Program
 						Console.Write($"{CurrentPercent}%");
 					}
 				}), Token);
+				Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+				Console.WriteLine("Completed.");
+				return;
+			}
+			if (DontCombine)
+			{
+				var video = manifest.GetVideoStreams().GetWithHighestVideoQuality();
+				var audio = manifest.GetAudioStreams().GetWithHighestBitrate();
+				Console.Write($"Downloading video for {videoTitle} - ");
+				CurrentRow = Console.GetCursorPosition().Top;
+				CurrentCollumn = Console.GetCursorPosition().Left;
+				await Client.Videos.Streams.DownloadAsync(video, $"{RemoveInvalidChars(videoTitle)}.{video.Container.Name}",
+				new Progress<double>(percent =>
+				{
+					int CurrentPercent = (int)(percent * 100);
+					if (CurrentPercent != LastPercent)
+					{
+						LastPercent = CurrentPercent;
+						Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+						Console.Write($"{CurrentPercent}%");
+					}
+				}), Token);
+				Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+				Console.WriteLine("Completed.");
+				Console.Write($"Downloading audio for {videoTitle} - ");
+				CurrentRow = Console.GetCursorPosition().Top;
+				CurrentCollumn = Console.GetCursorPosition().Left;
+				await Client.Videos.Streams.DownloadAsync(audio, $"{RemoveInvalidChars(videoTitle)}.{audio.Container.Name}",
+				new Progress<double>(percent =>
+				{
+					int CurrentPercent = (int)(percent * 100);
+					if (CurrentPercent != LastPercent)
+					{
+						LastPercent = CurrentPercent;
+						Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+						Console.Write($"{CurrentPercent}%");
+					}
+				}), Token);
+				Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+				Console.WriteLine("Completed.");
 				return;
 			}
 			var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
@@ -177,22 +227,27 @@ class Program
 	{
 		if (Client is null)
 			return;
+		string filename = $"{RemoveInvalidChars(title)}.{stream.Container.Name}";
+		if (Path.Exists(filename) && new FileInfo(filename).Length != 0 && !Redownload)
+		{
+			Console.WriteLine($"Skipping {title} beacuse it's already downloaded.");
+			return;
+		}
 		Console.Write($"{title} - ");
 		CurrentRow = Console.GetCursorPosition().Top;
 		CurrentCollumn = Console.GetCursorPosition().Left;
 		try
 		{
-		await Client.Videos.Streams.DownloadAsync(stream, $"{RemoveInvalidChars(title)}.{stream.Container.Name}",
-		new Progress<double>(percent => 
+		await Client.Videos.Streams.DownloadAsync(stream, filename, new Progress<double>(percent => 
+		{
+			int CurrentPercent = (int)(percent * 100);
+			if (CurrentPercent != LastPercent)
 			{
-				int CurrentPercent = (int)(percent * 100);
-				if (CurrentPercent != LastPercent)
-				{
-					LastPercent = CurrentPercent;
-					Console.SetCursorPosition(CurrentCollumn, CurrentRow);
-					Console.Write($"{CurrentPercent}%");
-				}
-			}), Token);
+				LastPercent = CurrentPercent;
+				Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+				Console.Write($"{CurrentPercent}%");
+			}
+		}), Token);
 		}
 		catch (IOException e)
 		{
@@ -280,7 +335,7 @@ class Program
 		Console.SetCursorPosition(CurrentCollumn, CurrentRow);
 		Console.WriteLine("Completed.");
 	}
-
+	
 	static void ParseCommandOptions(string[] args)
 	{
 		string outpath = "";
@@ -299,6 +354,8 @@ class Program
 			{ "uf|use-folders", "Download playlists and channels to folders with their names. Equivalent to setting --channel-folders " + 
 			"and --playlist-folders.", uf => { if (uf != null) { ChannelFolder = true; PlaylistFolder = true; } }},
 			{ "st|save-thumbnails", "Download the video's thumbnails.", sf => SaveThumbnails = sf != null },
+			{ "dc|dont-combine", "Use DASH streams, but don't automatically combine the audio/video streams, save them separately instead.",
+			 dc => DontCombine = dc != null },
 			{ "h|help", "Show help message and exit.", h => help = h != null }
 		};
 		try { URLs = options.Parse(args); }
@@ -363,7 +420,7 @@ class Program
 
 	static string FormatTimespan(TimeSpan span)
 	{
-		string outstr = "";
+		string outstr;
 		if (span.Hours == 0)
 		{
 			outstr = span.ToString("mm\\:ss\\.ff");

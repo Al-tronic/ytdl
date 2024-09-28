@@ -140,7 +140,7 @@ class Program
 			{
 				var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
 				var lang = captions.GetByLanguage(CaptionLang);
-				Console.Write($"Captions for {videoTitle} ({CaptionLang})");
+				Console.Write($"Captions for {videoTitle} ({CaptionLang}) ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
 				await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt", default, Token);

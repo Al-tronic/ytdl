@@ -181,7 +181,7 @@ class Program
 				Console.Write($"Downloading video for {videoTitle} - ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
-				await Client.Videos.Streams.DownloadAsync(video, $"{RemoveInvalidChars(videoTitle)}.{video.Container.Name}",
+				await Client.Videos.Streams.DownloadAsync(video, $"{RemoveInvalidChars(videoTitle)} - Video.{video.Container.Name}",
 				new Progress<double>(percent =>
 				{
 					int CurrentPercent = (int)(percent * 100);
@@ -197,7 +197,7 @@ class Program
 				Console.Write($"Downloading audio for {videoTitle} - ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
-				await Client.Videos.Streams.DownloadAsync(audio, $"{RemoveInvalidChars(videoTitle)}.{audio.Container.Name}",
+				await Client.Videos.Streams.DownloadAsync(audio, $"{RemoveInvalidChars(videoTitle)} - Audio.{audio.Container.Name}",
 				new Progress<double>(percent =>
 				{
 					int CurrentPercent = (int)(percent * 100);

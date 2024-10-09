@@ -138,20 +138,27 @@ class Program
 			}
 			if (GetCaptions)
 			{
-				var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
-				var lang = captions.GetByLanguage(CaptionLang);
-				Console.Write($"Captions for {videoTitle} ({CaptionLang}) ");
-				CurrentRow = Console.GetCursorPosition().Top;
-				CurrentCollumn = Console.GetCursorPosition().Left;
-				await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt", default, Token);
-				Console.SetCursorPosition(CurrentCollumn, CurrentRow);
-				Console.WriteLine("Completed.");
+				try
+				{
+					var captions = await Client.Videos.ClosedCaptions.GetManifestAsync(url);
+					var lang = captions.GetByLanguage(CaptionLang);
+					Console.Write($"Captions for {videoTitle} ({CaptionLang}) ");
+					CurrentRow = Console.GetCursorPosition().Top;
+					CurrentCollumn = Console.GetCursorPosition().Left;
+					await Client.Videos.ClosedCaptions.DownloadAsync(lang, $"{RemoveInvalidChars(videoTitle)}-{CaptionLang}.srt", default, Token);
+					Console.SetCursorPosition(CurrentCollumn, CurrentRow);
+					Console.WriteLine("Completed.");
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine($"Couldn't get captions. {e.Message}");
+				}
 			}
 			if (NoDASH)
 			{
 				var stream = manifest.GetMuxedStreams().GetWithHighestVideoQuality();
-				string filename = $"{RemoveInvalidChars(videoTitle)}.{stream.Container.Name}";
-				if (Path.Exists(filename) && new FileInfo(filename).Length != 0 && !Redownload)
+				string filename1 = $"{RemoveInvalidChars(videoTitle)}.{stream.Container.Name}";
+				if (Path.Exists(filename1) && new FileInfo(filename1).Length != 0 && !Redownload)
 				{
 					Console.WriteLine($"Skipping {videoTitle} beacuse it's already downloaded.");
 					return;
@@ -159,7 +166,7 @@ class Program
 				Console.Write($"{videoTitle} - ");
 				CurrentRow = Console.GetCursorPosition().Top;
 				CurrentCollumn = Console.GetCursorPosition().Left;
-				await Client.Videos.Streams.DownloadAsync(stream, filename,
+				await Client.Videos.Streams.DownloadAsync(stream, filename1,
 				new Progress<double>(percent =>
 				{
 					int CurrentPercent = (int)(percent * 100);
@@ -214,6 +221,12 @@ class Program
 			}
 			var audiostream = manifest.GetAudioOnlyStreams().GetWithHighestBitrate();
 			var videostream = manifest.GetVideoOnlyStreams().GetWithHighestVideoQuality();
+			string filename = $"{RemoveInvalidChars(videoTitle)}.{videostream.Container.Name}";
+			if (Path.Exists(filename) && new FileInfo(filename).Length != 0 && !Redownload)
+			{
+				Console.WriteLine($"Skipping {videoTitle} beacuse it's already downloaded.");
+				return;
+			}
 			await DownloadVideo([audiostream, videostream], videoTitle, videostream.Container.Name);
 			return;
 		}
@@ -436,7 +449,7 @@ class Program
 		string outpath = "";
 		foreach (char c in filepath)
 		{
-			if (invalid.Contains(c) || (c == '&' && !NoDASH))
+			if (invalid.Contains(c) || ((c == '&' || c == ':' || c == '$') && !NoDASH))
 				continue;
 			outpath += c;
 		}

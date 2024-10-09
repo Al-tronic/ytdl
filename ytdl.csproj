@@ -12,8 +12,8 @@
   <ItemGroup>
     <PackageReference Include="Mono.Options" Version="6.12.0.148" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="youtubeexplode" Version="6.4.0" />
-    <PackageReference Include="youtubeexplode.converter" Version="6.4.0" />
+    <PackageReference Include="youtubeexplode" Version="6.4.2" />
+    <PackageReference Include="youtubeexplode.converter" Version="6.4.2" />
   </ItemGroup>
 
 </Project>

@@ -449,7 +449,7 @@ class Program
 		string outpath = "";
 		foreach (char c in filepath)
 		{
-			if (invalid.Contains(c) || ((c == '&' || c == ':' || c == '$') && !NoDASH))
+			if (invalid.Contains(c) || ((c == '&' || c == ':' || c == '$' || c == '"' || c == '?' || c == '*') && !NoDASH))
 				continue;
 			outpath += c;
 		}

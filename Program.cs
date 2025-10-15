@@ -79,8 +79,19 @@ class Program
                         FileStream outstream = File.OpenWrite(RemoveInvalidChars(video.Title) + ".webp");
                         await stream.CopyToAsync(outstream);
                     }
-                    var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
-					await DownloadFunc(manifest, video.Title, video.Url);
+					try
+					{
+                    	var manifest = await Client.Videos.Streams.GetManifestAsync(video.Url);
+						await DownloadFunc(manifest, video.Title, video.Url);
+					}
+					catch (Exception e)
+					{
+						Console.WriteLine($"Failed to get video manifest: {e.Message}");
+						Console.WriteLine("These errors are usually cause by YoutubeExplode being out of date, try " +
+							"removing the 'bin' and 'obj' directories and running the dependency update script.");
+						Console.WriteLine($"\n{e.StackTrace}");
+						Exit(1);
+					}
 				}
 				if (PlaylistFolder) Directory.SetCurrentDirectory(OutputDir);
 			}
